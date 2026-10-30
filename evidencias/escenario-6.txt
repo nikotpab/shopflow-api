@@ -1,13 +1,50 @@
-HTTP/1.1 200 
+## Escenario 6 — Pago con LegacyPay: primer cobro (200) y cobro repetido (409)
+
+=== 6a: Primer pago de PED-1 con LegacyPay ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos/PED-1/pago \
+  -H "Content-Type: application/json" \
+  -d @esc6.json
+
+### Cuerpo del request (esc6.json)
+{"proveedor": "LEGACYPAY"}
+
+### Respuesta
+HTTP/1.1 200
 Content-Type: application/json
 Transfer-Encoding: chunked
-Date: Fri, 30 Oct 2026 18:51:38 GMT
+Date: Fri, 30 Oct 2026 19:48:31 GMT
 
-{"id":"PED-1","estado":"PAGADO","clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"ana.perez@correo.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00},{"sku":"SKU-002","nombre":"Mouse inalámbrico","cantidad":2,"precioUnitario":25.50}],"direccionEnvio":"Calle 134 # 9-51, Bogotá","recogerEnTienda":false,"cupon":"BOSQUE10","notaRegalo":null,"envioExpress":true,"canalNotificacion":"EMAIL","subtotal":136.00,"descuento":13.60,"autorizacionPago":"LP4051","total":122.40}
+{"id":"PED-1","estado":"PAGADO","clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"cliente@email.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00},{"sku":"SKU-002","nombre":"Mouse inalámbrico","cantidad":2,"precioUnitario":25.50}],"direccionEnvio":"Calle 100 # 15-20, Bogotá","recogerEnTienda":false,"cupon":"BOSQUE10","notaRegalo":null,"envioExpress":true,"canalNotificacion":"EMAIL","subtotal":136.00,"descuento":13.60,"autorizacionPago":"LP4051","total":122.40}
 
-HTTP/1.1 409 
+### Resultado esperado
+200 OK, estado "PAGADO"
+
+### Resultado obtenido
+CUMPLE — 200, estado "PAGADO", autorizacionPago "LP4051"
+
+
+=== 6b: Segundo pago de PED-1 con LegacyPay (pedido ya pagado) ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos/PED-1/pago \
+  -H "Content-Type: application/json" \
+  -d @esc6.json
+
+### Cuerpo del request (esc6.json)
+{"proveedor": "LEGACYPAY"}
+
+### Respuesta
+HTTP/1.1 409
 Content-Type: application/json
 Transfer-Encoding: chunked
-Date: Fri, 30 Oct 2026 18:51:38 GMT
+Date: Fri, 30 Oct 2026 19:48:37 GMT
 
 {"error":"El pedido PED-1 ya está pagado"}
+
+### Resultado esperado
+409 Conflict (pedido ya pagado)
+
+### Resultado obtenido
+CUMPLE — 409, mensaje "El pedido PED-1 ya está pagado"
