@@ -1,6 +1,7 @@
 package co.edu.unbosque.shopflow.notificaciones;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,5 +28,12 @@ class NotificadorEmailTest {
         assertEquals(1, bandeja.todas().size());
         assertEquals("EMAIL", bandeja.todas().get(0).canal());
         assertTrue(bandeja.todas().get(0).mensaje().contains("145.66"));
+    }
+
+    @Test
+    void cadaCreadorProduceSuPropioProducto() {
+        NotificadorEmail notificador = new NotificadorEmail(new BandejaNotificaciones());
+
+        assertInstanceOf(NotificacionEmail.class, notificador.crearNotificacion());
     }
 }
