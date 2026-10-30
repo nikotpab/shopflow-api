@@ -1,0 +1,6 @@
+ .../facturacion/peru/CalculadoraIgvPeru.java       | 20 +++++++++
+ .../shopflow/facturacion/peru/FabricaPeru.java     | 34 +++++++++++++++
+ .../facturacion/peru/GeneradorFacturaSunat.java    | 22 ++++++++++
+ .../peru/ValidadorIdentificacionPeru.java          | 14 +++++++
+ .../facturacion/ServicioFacturacionPeruTest.java   | 49 ++++++++++++++++++++++
+ 5 files changed, 139 insertions(+)
