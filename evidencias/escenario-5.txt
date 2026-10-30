@@ -1,0 +1,67 @@
+## Escenario 5 — Pedido México: RFC válido (201) y cédula colombiana (400)
+
+=== 5a: RFC válido GODE561231GR8 ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos \
+  -H "Content-Type: application/json" \
+  -d @esc5a.json
+
+### Cuerpo del request (esc5a.json)
+{
+  "clienteId": "CLI-002",
+  "documentoCliente": "GODE561231GR8",
+  "pais": "MX",
+  "contacto": "cliente.mx@email.com",
+  "items": [{"sku": "SKU-001", "cantidad": 1}],
+  "direccionEnvio": "Av. Insurgentes 123, CDMX",
+  "canalNotificacion": "EMAIL"
+}
+
+### Respuesta
+HTTP/1.1 201
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 19:47:49 GMT
+
+{"id":"PED-2","estado":"CREADO","pais":"MX","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"CFDI (SAT)","numero":"CFDI-MX-1","base":85.00,"nombreImpuesto":"IVA 16%","impuesto":13.60,"total":98.60},"autorizacionPago":null}
+
+### Resultado esperado
+201 Created, comprobante tipo "CFDI (SAT)", impuesto "IVA 16%"
+
+### Resultado obtenido
+CUMPLE — 201, tipo "CFDI (SAT)", "IVA 16%"
+
+
+=== 5b: Cédula colombiana 1020304050 en pedido MX ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos \
+  -H "Content-Type: application/json" \
+  -d @esc5b.json
+
+### Cuerpo del request (esc5b.json)
+{
+  "clienteId": "CLI-003",
+  "documentoCliente": "1020304050",
+  "pais": "MX",
+  "contacto": "cliente.mx2@email.com",
+  "items": [{"sku": "SKU-001", "cantidad": 1}],
+  "direccionEnvio": "Av. Insurgentes 456, CDMX",
+  "canalNotificacion": "EMAIL"
+}
+
+### Respuesta
+HTTP/1.1 400
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 19:48:12 GMT
+Connection: close
+
+{"error":"RFC mexicano inválido: debe tener 3-4 letras, 6 dígitos y 3 alfanuméricos (ej. GODE561231GR8); recibido: \"1020304050\""}
+
+### Resultado esperado
+400 Bad Request (documento inválido para México)
+
+### Resultado obtenido
+CUMPLE — 400, mensaje de RFC mexicano inválido

@@ -1,0 +1,77 @@
+## Escenario 7 — 2 portátiles: LegacyPay (fondos insuficientes 409) y QuickPay (200)
+
+=== 7a: Crear pedido con 2 portátiles SKU-004 ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos \
+  -H "Content-Type: application/json" \
+  -d @esc7a.json
+
+### Cuerpo del request (esc7a.json)
+{
+  "clienteId": "CLI-004",
+  "documentoCliente": "1020304051",
+  "pais": "CO",
+  "contacto": "cli4@email.com",
+  "items": [{"sku": "SKU-004", "cantidad": 2}],
+  "direccionEnvio": "Carrera 7 # 32-45, Bogotá",
+  "canalNotificacion": "EMAIL"
+}
+
+### Respuesta
+HTTP/1.1 201
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 19:48:55 GMT
+
+{"id":"PED-3","estado":"CREADO","pais":"CO","subtotal":2900.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-2","base":2900.00,"nombreImpuesto":"IVA 19%","impuesto":551.00,"total":3451.00},"autorizacionPago":null}
+
+
+=== 7b: Pagar PED-3 con LegacyPay ($2900 > límite $2000) ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos/PED-3/pago \
+  -H "Content-Type: application/json" \
+  -d @esc6.json
+
+### Cuerpo del request
+{"proveedor": "LEGACYPAY"}
+
+### Respuesta
+HTTP/1.1 409
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 19:49:11 GMT
+
+{"error":"Fondos insuficientes"}
+
+### Resultado esperado
+409 Conflict "Fondos insuficientes"
+
+### Resultado obtenido
+CUMPLE — 409, mensaje "Fondos insuficientes"
+
+
+=== 7c: Pagar PED-3 con QuickPay ===
+
+### Comando
+curl.exe -i -s -X POST http://localhost:8080/api/pedidos/PED-3/pago \
+  -H "Content-Type: application/json" \
+  -d @esc7b.json
+
+### Cuerpo del request (esc7b.json)
+{"proveedor": "QUICKPAY"}
+
+### Respuesta
+HTTP/1.1 200
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 19:49:17 GMT
+
+{"id":"PED-3","estado":"PAGADO","clienteId":"CLI-004","documentoCliente":"1020304051","pais":"CO","contacto":"cli4@email.com","items":[{"sku":"SKU-004","nombre":"Portátil 14 pulgadas","cantidad":2,"precioUnitario":1450.00}],"direccionEnvio":"Carrera 7 # 32-45, Bogotá","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":2900.00,"descuento":0.00,"autorizacionPago":"QP-f5133040","total":2900.00}
+
+### Resultado esperado
+200 OK, estado "PAGADO"
+
+### Resultado obtenido
+CUMPLE — 200, estado "PAGADO", autorizacionPago "QP-f5133040"
