@@ -37,6 +37,91 @@ Todo lo demás (controladores, servicios, configuraciones y las clases de cada p
 | Proxy | El catálogo es de otro equipo y cada consulta tarda 1,5 segundos; un pedido de 3 productos tardaría 4,5 s solo en consultar precios. Además, solo el ADMIN puede cambiar precios, y sin proxy ese control se copiaría en cada lugar que cambia un precio. | Sujeto: ServicioCatalogo. Sujeto real: CatalogoRemoto (simula los 1,5 s de red). Proxy de caché: CatalogoCacheProxy, guarda los productos y solo llama al remoto si el SKU no está en caché; al cambiar un precio actualiza su caché para no servir uno viejo. Proxy de protección: CatalogoProteccionProxy, lanza AccesoDenegadoException (403) si el rol no es ADMIN. Clientes: ProductoController y PedidoService, que reciben un ServicioCatalogo sin saber que es un proxy. | LSP: cada proxy puede reemplazar al catálogo real sin que el cliente lo note. También SRP (la caché y los permisos salen del objeto real) y OCP (se agrega control sin modificar CatalogoRemoto). | Cuando el objeto es barato y local, porque la capa extra no aporta nada. También cuando se necesitan datos siempre frescos y no se puede saber cuándo la caché quedó vieja (por ejemplo, si otro sistema cambia el precio directamente en el catálogo remoto). Y cuando ocultar la red haría creer que una llamada es barata. |
 
 
+## 3. Patrones: problema, diagrama de clases y endpoint
+
+### Builder
+
+**Problema que resuelve en ShopFlow:** un pedido tiene 4 datos obligatorios, al menos un ítem y 6 opciones, con reglas que dependen de varias opciones a la vez. Con un constructor largo es fácil confundir el orden de los parámetros, y con setters el pedido puede quedar incompleto o inválido. Con el Builder, `build()` valida todo y solo entrega pedidos válidos.
+
+**Endpoint que lo evidencia:** `POST /api/pedidos`. Responde 201 con el pedido, o 400 si rompe alguna regla.
+
+```mermaid
+classDiagram
+    class Pedido {
+        <<Producto>>
+        -Pedido(Builder)
+        +getSubtotal() BigDecimal
+        +getDescuento() BigDecimal
+        +getTotal() BigDecimal
+        +conPagoAprobado(String) Pedido
+    }
+    class PedidoBuilder["Pedido.Builder"] {
+        <<Builder>>
+        +Builder(clienteId, documentoCliente, pais, contacto)
+        +item(ItemPedido) Builder
+        +direccionEnvio(String) Builder
+        +recogerEnTienda(boolean) Builder
+        +cupon(String) Builder
+        +notaRegalo(String) Builder
+        +envioExpress(boolean) Builder
+        +build() Pedido
+    }
+    class ItemPedido {
+        <<record>>
+        sku, nombre, cantidad, precioUnitario
+    }
+    class PedidoService {
+        <<Director>>
+        +crear(PedidoRequest) Pedido
+    }
+    PedidoService ..> PedidoBuilder : llama al builder
+    PedidoBuilder ..> Pedido : build() crea
+    PedidoBuilder o-- ItemPedido
+    Pedido o-- ItemPedido
+```
+
+### Proxy
+
+**Problema que resuelve en ShopFlow:** el catálogo es de otro equipo y cada consulta tarda 1,5 segundos. Además, solo un ADMIN puede cambiar precios. Con los proxies, la caché y el control de acceso quedan fuera del catálogo real y ningún cliente se entera de que habla con un intermediario.
+
+**Endpoints que lo evidencian:** `GET /api/productos/{sku}` (la segunda consulta responde casi al instante) y `PUT /api/productos/{sku}/precio` (403 con `X-Rol: CLIENTE`, 200 con `X-Rol: ADMIN`).
+
+```mermaid
+classDiagram
+    class ServicioCatalogo {
+        <<interface>>
+        +buscar(String) Producto
+        +listar() List~Producto~
+        +actualizarPrecio(String, BigDecimal) Producto
+    }
+    class CatalogoRemoto {
+        <<Sujeto real>>
+    }
+    class CatalogoCacheProxy {
+        <<Proxy de cache>>
+        -Map cache
+    }
+    class CatalogoProteccionProxy {
+        <<Proxy de proteccion>>
+        -String rol
+    }
+    class ProductoController {
+        <<Cliente>>
+    }
+    class PedidoService {
+        <<Cliente>>
+    }
+    ServicioCatalogo <|.. CatalogoRemoto
+    ServicioCatalogo <|.. CatalogoCacheProxy
+    ServicioCatalogo <|.. CatalogoProteccionProxy
+    CatalogoCacheProxy --> ServicioCatalogo : delega en el real
+    CatalogoProteccionProxy --> ServicioCatalogo : delega en el real
+    ProductoController --> ServicioCatalogo
+    PedidoService --> ServicioCatalogo
+```
+
+
+
 
 ## 5. Preguntas de reflexión
 
