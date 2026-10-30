@@ -1,0 +1,13 @@
+HTTP/1.1 200 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 18:51:40 GMT
+
+[{"proveedor":"LEGACYPAY","monto":122.40,"resultado":{"aprobado":true,"autorizacion":"LP4051","mensaje":"Pago aprobado"},"duracionMs":308},{"proveedor":"LEGACYPAY","monto":2900.00,"resultado":{"aprobado":false,"autorizacion":null,"mensaje":"Fondos insuficientes"},"duracionMs":305},{"proveedor":"QUICKPAY","monto":2900.00,"resultado":{"aprobado":true,"autorizacion":"QP-8e2779fa","mensaje":"Pago aprobado"},"duracionMs":5}]
+
+HTTP/1.1 200 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 18:51:40 GMT
+
+[{"canal":"EMAIL","destino":"ana.perez@correo.com","mensaje":"Asunto: Pago aprobado | Tu pago del pedido PED-1 por USD 122.40 fue aprobado","fecha":"2026-10-30T13:51:38.916979"},{"canal":"SMS","destino":"+573001234567","mensaje":"Tu pago del pedido PED-3 por USD 2900.00 fue aprobado","fecha":"2026-10-30T13:51:40.807761"}]

@@ -1,0 +1,13 @@
+HTTP/1.1 200 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 18:51:38 GMT
+
+{"id":"PED-1","estado":"PAGADO","clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"ana.perez@correo.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00},{"sku":"SKU-002","nombre":"Mouse inalámbrico","cantidad":2,"precioUnitario":25.50}],"direccionEnvio":"Calle 134 # 9-51, Bogotá","recogerEnTienda":false,"cupon":"BOSQUE10","notaRegalo":null,"envioExpress":true,"canalNotificacion":"EMAIL","subtotal":136.00,"descuento":13.60,"autorizacionPago":"LP4051","total":122.40}
+
+HTTP/1.1 409 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Fri, 30 Oct 2026 18:51:38 GMT
+
+{"error":"El pedido PED-1 ya está pagado"}
