@@ -20,8 +20,8 @@ public class PedidoController {
     }
 
     @PostMapping
-    public ResponseEntity<Pedido> crear(@RequestBody PedidoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(servicio.crear(request));
+    public ResponseEntity<PedidoCreadoResponse> crear(@RequestBody PedidoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(servicio.crearConComprobante(request));
     }
 
     @GetMapping("/{id}")

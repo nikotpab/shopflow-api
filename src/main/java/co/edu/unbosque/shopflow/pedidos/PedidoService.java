@@ -2,6 +2,8 @@ package co.edu.unbosque.shopflow.pedidos;
 
 import co.edu.unbosque.shopflow.catalogo.Producto;
 import co.edu.unbosque.shopflow.catalogo.ServicioCatalogo;
+import co.edu.unbosque.shopflow.facturacion.Comprobante;
+import co.edu.unbosque.shopflow.facturacion.ServicioFacturacion;
 import co.edu.unbosque.shopflow.notificaciones.Notificador;
 import co.edu.unbosque.shopflow.pagos.PasarelaDePago;
 import co.edu.unbosque.shopflow.pagos.ResultadoPago;
@@ -14,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -30,18 +33,44 @@ public class PedidoService {
     private final ServicioCatalogo catalogo;
     private final Map<String, PasarelaDePago> pasarelas;
     private final Map<String, Notificador> notificadores;
+    private final ServicioFacturacion servicioFacturacion;
     private final Map<String, Pedido> pedidos = new ConcurrentHashMap<>();
     private final AtomicLong secuencia = new AtomicLong();
 
+    /** Sobrecarga para tests que no necesitan facturación. */
     public PedidoService(ServicioCatalogo catalogo, Map<String, PasarelaDePago> pasarelas,
             List<Notificador> notificadores) {
+        this(catalogo, pasarelas, notificadores, null);
+    }
+
+    @Autowired
+    public PedidoService(ServicioCatalogo catalogo, Map<String, PasarelaDePago> pasarelas,
+            List<Notificador> notificadores, ServicioFacturacion servicioFacturacion) {
         this.catalogo = catalogo;
         this.pasarelas = pasarelas;
         this.notificadores = notificadores.stream()
                 .collect(Collectors.toUnmodifiableMap(Notificador::canal, n -> n));
+        this.servicioFacturacion = servicioFacturacion;
     }
 
     public Pedido crear(PedidoRequest request) {
+        Pedido pedido = construir(request);
+        secuencia.incrementAndGet();
+        pedidos.put(pedido.getId(), pedido);
+        return pedido;
+    }
+
+    /** Factura ANTES de guardar: un documento inválido lanza IllegalArgumentException sin persistir el pedido. */
+    public PedidoCreadoResponse crearConComprobante(PedidoRequest request) {
+        Pedido pedido = construir(request);
+        Comprobante comprobante = servicioFacturacion.facturar(pedido);
+        secuencia.incrementAndGet();
+        pedidos.put(pedido.getId(), pedido);
+        return new PedidoCreadoResponse(pedido.getId(), pedido.getEstado(), pedido.getPais(),
+                pedido.getSubtotal(), pedido.getDescuento(), comprobante, pedido.getAutorizacionPago());
+    }
+
+    private Pedido construir(PedidoRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("El cuerpo del pedido es obligatorio");
         }
@@ -64,10 +93,7 @@ public class PedidoService {
                 .canalNotificacion(request.canalNotificacion())
                 .id("PED-" + (secuencia.get() + 1));
 
-        Pedido pedido = builder.build();
-        secuencia.incrementAndGet();
-        pedidos.put(pedido.getId(), pedido);
-        return pedido;
+        return builder.build();
     }
 
     public Pedido buscar(String id) {
