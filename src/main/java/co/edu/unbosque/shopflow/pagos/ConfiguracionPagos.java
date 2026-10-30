@@ -27,10 +27,10 @@ public class ConfiguracionPagos {
         return Map.of(
             "LEGACYPAY", aplicarDecoradores(
                 new LegacyPayAdapter(new LegacyPayClient(probabilidadTimeoutLegacyPay)),
-                "LEGACYPAY", reintentos, maxIntentos, auditoria, registroAuditoria),
+                "LEGACYPAY", reintentos, maxIntentos, auditoria, registroAuditoria, true),
             "QUICKPAY", aplicarDecoradores(
                 new QuickPayAdapter(new QuickPaySdk()),
-                "QUICKPAY", reintentos, maxIntentos, auditoria, registroAuditoria)
+                "QUICKPAY", reintentos, maxIntentos, auditoria, registroAuditoria, true)
         );
     }
 
@@ -39,6 +39,22 @@ public class ConfiguracionPagos {
         PasarelaDePago resultado = base;
         if (reintentos) {
             resultado = new ReintentoPago(resultado, maxIntentos);
+        }
+        if (auditoria) {
+            resultado = new AuditoriaPago(resultado, nombre, registro);
+        }
+        return resultado;
+    }
+
+    static PasarelaDePago aplicarDecoradores(PasarelaDePago base, String nombre,
+            boolean reintentos, int maxIntentos, boolean auditoria, RegistroAuditoria registro,
+            boolean metricas) {
+        PasarelaDePago resultado = base;
+        if (reintentos) {
+            resultado = new ReintentoPago(resultado, maxIntentos);
+        }
+        if (metricas) {
+            resultado = new MetricasPago(resultado, nombre);
         }
         if (auditoria) {
             resultado = new AuditoriaPago(resultado, nombre, registro);
