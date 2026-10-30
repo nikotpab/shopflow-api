@@ -2,6 +2,7 @@ package co.edu.unbosque.shopflow.facturacion;
 
 import co.edu.unbosque.shopflow.facturacion.colombia.FabricaColombia;
 import co.edu.unbosque.shopflow.facturacion.mexico.FabricaMexico;
+import co.edu.unbosque.shopflow.pedidos.ItemPedido;
 import co.edu.unbosque.shopflow.pedidos.Pedido;
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,8 +22,12 @@ class ServicioFacturacionTest {
 
     @Test
     void colombia_baseImpuestoTotalYTipoCorrectos() {
-        Pedido pedido = new Pedido("CO", "123456789",
-                new BigDecimal("136.00"), new BigDecimal("13.60"));
+        // 4 × 34.00 = subtotal 136.00; BOSQUE10 → descuento 13.60; base = 122.40
+        Pedido pedido = new Pedido.Builder("C001", "123456789", "CO", "cliente@test.com")
+                .item(new ItemPedido("SKU-001", "Producto A", 4, new BigDecimal("34.00")))
+                .cupon(Pedido.CUPON_DESCUENTO)
+                .direccionEnvio("Calle 123")
+                .build();
 
         Comprobante c = servicio.facturar(pedido);
 
@@ -38,8 +43,10 @@ class ServicioFacturacionTest {
 
     @Test
     void mexico_rfcValidoGeneraCfdi() {
-        Pedido pedido = new Pedido("MX", "GODE561231GR8",
-                new BigDecimal("200.00"), new BigDecimal("0.00"));
+        Pedido pedido = new Pedido.Builder("C002", "GODE561231GR8", "MX", "cliente@test.com")
+                .item(new ItemPedido("SKU-002", "Producto B", 1, new BigDecimal("200.00")))
+                .direccionEnvio("Av. Reforma 456")
+                .build();
 
         Comprobante c = servicio.facturar(pedido);
 
@@ -54,16 +61,20 @@ class ServicioFacturacionTest {
 
     @Test
     void mexico_cedulaColombiana_lanzaIllegalArgumentException() {
-        Pedido pedido = new Pedido("MX", "123456789",
-                new BigDecimal("100.00"), new BigDecimal("0.00"));
+        Pedido pedido = new Pedido.Builder("C003", "123456789", "MX", "cliente@test.com")
+                .item(new ItemPedido("SKU-003", "Producto C", 1, new BigDecimal("100.00")))
+                .direccionEnvio("Calle Falsa 123")
+                .build();
 
         assertThrows(IllegalArgumentException.class, () -> servicio.facturar(pedido));
     }
 
     @Test
     void paisDesconocido_lanzaIllegalArgumentException() {
-        Pedido pedido = new Pedido("US", "123456789",
-                new BigDecimal("100.00"), new BigDecimal("0.00"));
+        Pedido pedido = new Pedido.Builder("C004", "123456789", "US", "cliente@test.com")
+                .item(new ItemPedido("SKU-004", "Producto D", 1, new BigDecimal("100.00")))
+                .direccionEnvio("123 Main St")
+                .build();
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class, () -> servicio.facturar(pedido));
