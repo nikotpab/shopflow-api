@@ -381,7 +381,7 @@ Evidencia: la salida de `git diff --stat` del commit del reto está en `evidenci
 
 Se agregaron `NotificacionWhatsApp` (exige un número con indicativo, por ejemplo `+573001234567`, y antepone ✅ al mensaje) y `NotificadorWhatsApp` (`@Component`, `canal()` devuelve `"WHATSAPP"`). No se modificó ninguna clase existente: Spring inyecta el nuevo notificador en la lista que recibe `PedidoService`, que ya los indexa por canal, así que un pedido con `"canalNotificacion": "WHATSAPP"` se notifica sin tocar nada más.
 
-Evidencia de que solo hay archivos nuevos: la salida de `git diff --stat` del commit del reto está en `evidencias/reto-c-git-diff-stat.txt`.
+Evidencia de que solo hay archivos nuevos: la salida de `git show --stat` del commit `67dc2c9` está en `evidencias/reto-c-git-diff-stat.txt` (3 archivos, 88 inserciones, 0 borrados). El stat está filtrado por las tres rutas del reto (`NotificacionWhatsApp`, `NotificadorWhatsApp` y `NotificadorWhatsAppTest`), porque ese commit también incluye el trabajo de los patrones Adapter y Factory Method.
 
 
 ## 5. Preguntas de reflexión
