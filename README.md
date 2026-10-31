@@ -9,8 +9,8 @@ Ingeniería de Software 2 · Taller: patrones de diseño creacionales y estructu
 | Integrante | Patrones | Reto de extensión |
 |---|---|---|
 | Mayer Santiago Torres Sánchez | Abstract Factory y Decorator | Reto A (Perú) y Reto B (Métricas) |
-| [Nombre del integrante 2] | [Patrones] | [Reto] |
-| [Nombre del integrante 3] | [Patrones] | [Reto] |
+| Nicolas Barbosa Gualteros | Adapter y Factory Method | Reto C |
+| Thomas Esteban Duarte Cano | Builder y Proxy |
 
 Cada integrante trabajó en su propia rama y la integró a `main` mediante un pull request.
 
@@ -381,7 +381,7 @@ Evidencia: la salida de `git diff --stat` del commit del reto está en `evidenci
 
 Se agregaron `NotificacionWhatsApp` (exige un número con indicativo, por ejemplo `+573001234567`, y antepone ✅ al mensaje) y `NotificadorWhatsApp` (`@Component`, `canal()` devuelve `"WHATSAPP"`). No se modificó ninguna clase existente: Spring inyecta el nuevo notificador en la lista que recibe `PedidoService`, que ya los indexa por canal, así que un pedido con `"canalNotificacion": "WHATSAPP"` se notifica sin tocar nada más.
 
-Evidencia de que solo hay archivos nuevos: la salida de `git diff --stat` del commit del reto está en `evidencias/reto-c-git-diff-stat.txt`.
+Evidencia de que solo hay archivos nuevos: la salida de `git show --stat` del commit `67dc2c9` está en `evidencias/reto-c-git-diff-stat.txt` (3 archivos, 88 inserciones, 0 borrados). El stat está filtrado por las tres rutas del reto (`NotificacionWhatsApp`, `NotificadorWhatsApp` y `NotificadorWhatsAppTest`), porque ese commit también incluye el trabajo de los patrones Adapter y Factory Method.
 
 
 ## 5. Preguntas de reflexión
@@ -400,9 +400,9 @@ En la facturación se crea una familia de productos que tienen que ir juntos: la
 
 **3. Invierta el orden de los decoradores (reintento por fuera de la auditoría) y pague cinco pedidos con LegacyPay. ¿Qué cambia en `GET /api/pagos/auditoria`? ¿Qué orden conviene y por qué?**
 
-Respuesta: Con la auditoría por fuera, que es el orden que dejamos en ConfiguracionPagos, cada pago pasa una sola vez por AuditoriaPago. Esta mide el tiempo, le pasa el cobro a ReintentoPago y al final guarda una entrada con el resultado final y lo que tardó en total, reintentos incluidos. Al pagar cinco pedidos con LegacyPay, GET /api/pagos/auditoria muestra exactamente cinco entradas.
+Respuesta: Con la auditoría por fuera, que es el orden que dejamos en ConfiguracionPagos, cada pago pasa una sola vez por AuditoriaPago. Esta mide el tiempo, le pasa el cobro a ReintentoPago y al final guarda una entrada con el resultado final y lo que tardó en total, reintentos incluidos. En nuestra corrida, al pagar cinco pedidos con LegacyPay, GET /api/pagos/auditoria mostró exactamente 5 entradas, aunque dos de esos pagos tardaron unos 910 ms porque se reintentaron por dentro.
 
-Al invertir el orden, el reintento queda por fuera y llama a AuditoriaPago en cada intento. Entonces cada timeout queda como una entrada fallida y el intento que sale bien queda como otra, cada una con la duración de un solo intento. Como LegacyPay falla cerca del 30 % de las veces, los cinco pagos dejaron más de cinco entradas. El número exacto cambia en cada ejecución porque los timeouts son aleatorios, y las corridas quedaron guardadas en evidencias/reflexion-3.txt.
+Al invertir el orden, el reintento queda por fuera y llama a AuditoriaPago en cada intento. Entonces cada timeout queda como una entrada fallida y el intento que sale bien queda como otra, cada una con la duración de un solo intento. En nuestra corrida con el orden invertido, los mismos cinco pagos dejaron 7 entradas: 4 aprobadas y 3 de error. Las 3 de error son los tres timeouts seguidos de un mismo pedido, que respondió 503 y por eso no tiene entrada aprobada. El número exacto cambia en cada ejecución porque los timeouts de LegacyPay son aleatorios (cerca del 30 %), y las dos corridas quedaron guardadas en evidencias/reflexion-3.txt.
 
 Conviene el primer orden. Auditoría pide registrar cada cobro, y con la auditoría por fuera hay una entrada por cobro con su resultado y su duración total. Con el orden invertido el registro mezcla reintentos con cobros, y ya no se sabe cuántos pagos se hicieron.
 
@@ -452,4 +452,4 @@ El segundo es CatalogoRemoto. No necesita un Adapter, porque ya implementa Servi
 - **Integración entre patrones.** La facturación (Abstract Factory) y el pedido (Builder) se desarrollaron por separado. Al unirlos hubo que cambiar `PedidoService` y `PedidoController` para que `POST /api/pedidos` devolviera el comprobante, y varias pruebas dejaron de compilar porque dependían de un constructor provisional de `Pedido`. Se corrigieron reescribiéndolas con el Builder.
 - **Orden de los decoradores.** El orden cambia el resultado: con la auditoría por fuera hay una entrada por cobro, y con el reintento por fuera cada intento queda registrado por separado. Comprobarlo fue difícil porque los timeouts de LegacyPay son aleatorios y el número de entradas cambia entre ejecuciones.
 - **Trabajo con git.** Hubo ramas con historiales independientes, un push rechazado por permisos y archivos compilados de `target/` versionados por error que ensuciaban cada `git status`. Se resolvió añadiendo un `.gitignore` y agregando a cada commit solo los archivos propios.
-- **Entorno.** Maven no estaba en el `PATH` de todos los equipos, por lo que se usó el `mvnw` del proyecto o el panel de pruebas del IDE.
+- **Entorno.** Maven no estaba en el `PATH` de todos los equipos y el proyecto no incluye `mvnw`, por lo que las pruebas se corrieron con Maven instalado en los equipos que lo tenían o desde el panel de pruebas del IDE.

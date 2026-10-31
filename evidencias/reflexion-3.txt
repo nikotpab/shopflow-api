@@ -1,0 +1,275 @@
+## Reflexión 3 — Orden de los decoradores de pago y GET /api/pagos/auditoria
+
+Configuración (application.properties sin cambios): shopflow.pagos.reintentos=true,
+shopflow.pagos.auditoria=true, shopflow.pagos.max-intentos=3,
+shopflow.legacypay.probabilidad-timeout=0.3.
+
+La app se levantó con `mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081`
+(puerto 8081 porque el 8080 estaba ocupado por otra instancia de la app). Se reinició
+entre corridas, así que cada una empieza con la auditoría vacía.
+
+Cada corrida: 5 pedidos de Colombia (SKU-001 x1, 85.00 USD) pagados con LEGACYPAY.
+
+### Corrida A — orden actual de ConfiguracionPagos
+Capas de adentro hacia afuera: LegacyPayAdapter → ReintentoPago → MetricasPago → AuditoriaPago
+(auditoría por fuera).
+
+Fecha: 2026-10-30 19:03:37 -0500
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-1","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-1","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-1/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-1","estado":"PAGADO","clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4051","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-002","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-2","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-2","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-2/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-2","estado":"PAGADO","clienteId":"CLI-002","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4052","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-003","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-3","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-3","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-3/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-3","estado":"PAGADO","clienteId":"CLI-003","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4053","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-004","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-4","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-4","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-4/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-4","estado":"PAGADO","clienteId":"CLI-004","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4054","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-005","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-5","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-5","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-5/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-5","estado":"PAGADO","clienteId":"CLI-005","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4055","total":85.00}
+HTTP 200
+
+$ curl -s http://localhost:8081/api/pagos/auditoria | jq .
+[
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4051",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 304
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4052",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 914
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4053",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 910
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4054",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 303
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4055",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 306
+  }
+]
+Entradas en auditoría: 5
+Entradas con error (timeouts): 0
+
+Salida de MetricasPago en consola (corrida A):
+[MÉTRICAS] LEGACYPAY: aprobados=1/1 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=2/2 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=3/3 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=4/4 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=5/5 (100.0%)
+
+### Corrida B — orden invertido (cambio temporal en ConfiguracionPagos)
+Capas de adentro hacia afuera: LegacyPayAdapter → AuditoriaPago → ReintentoPago → MetricasPago
+(reintento por fuera de la auditoría; métricas por fuera de todo para que sigan contando
+un cobro por pago, igual que en la corrida A).
+
+Cambio aplicado solo para esta corrida (git diff), revertido después con
+`git checkout -- src/main/java/co/edu/unbosque/shopflow/pagos/ConfiguracionPagos.java`:
+
+diff --git a/src/main/java/co/edu/unbosque/shopflow/pagos/ConfiguracionPagos.java b/src/main/java/co/edu/unbosque/shopflow/pagos/ConfiguracionPagos.java
+index 5eb9956..2cd0037 100644
+--- a/src/main/java/co/edu/unbosque/shopflow/pagos/ConfiguracionPagos.java
++++ b/src/main/java/co/edu/unbosque/shopflow/pagos/ConfiguracionPagos.java
+@@ -50,15 +50,15 @@ public class ConfiguracionPagos {
+             boolean reintentos, int maxIntentos, boolean auditoria, RegistroAuditoria registro,
+             boolean metricas) {
+         PasarelaDePago resultado = base;
++        if (auditoria) {
++            resultado = new AuditoriaPago(resultado, nombre, registro);
++        }
+         if (reintentos) {
+             resultado = new ReintentoPago(resultado, maxIntentos);
+         }
+         if (metricas) {
+             resultado = new MetricasPago(resultado, nombre);
+         }
+-        if (auditoria) {
+-            resultado = new AuditoriaPago(resultado, nombre, registro);
+-        }
+         return resultado;
+     }
+ }
+
+Fecha: 2026-10-30 19:03:59 -0500
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-1","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-1","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-1/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-1","estado":"PAGADO","clienteId":"CLI-001","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4051","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-002","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-2","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-2","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-2/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-2","estado":"PAGADO","clienteId":"CLI-002","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4052","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-003","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-3","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-3","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-3/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"error":"LegacyPay no está disponible"}
+HTTP 503
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-004","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-4","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-4","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-4/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-4","estado":"PAGADO","clienteId":"CLI-004","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4054","total":85.00}
+HTTP 200
+
+$ curl -s -X POST http://localhost:8081/api/pedidos -H 'Content-Type: application/json' -d '{"clienteId":"CLI-005","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","cantidad":1}],"direccionEnvio":"Calle 1 # 2-3","canalNotificacion":"EMAIL"}'
+{"id":"PED-5","estado":"CREADO","pais":"CO","subtotal":85.00,"descuento":0.00,"comprobante":{"tipo":"Factura electrónica (DIAN)","numero":"FE-CO-5","base":85.00,"nombreImpuesto":"IVA 19%","impuesto":16.15,"total":101.15},"autorizacionPago":null}
+HTTP 201
+$ curl -s -X POST http://localhost:8081/api/pedidos/PED-5/pago -H 'Content-Type: application/json' -d '{"proveedor":"LEGACYPAY"}'
+{"id":"PED-5","estado":"PAGADO","clienteId":"CLI-005","documentoCliente":"1020304050","pais":"CO","contacto":"a@b.com","items":[{"sku":"SKU-001","nombre":"Teclado mecánico","cantidad":1,"precioUnitario":85.00}],"direccionEnvio":"Calle 1 # 2-3","recogerEnTienda":false,"cupon":null,"notaRegalo":null,"envioExpress":false,"canalNotificacion":"EMAIL","subtotal":85.00,"descuento":0.00,"autorizacionPago":"LP4055","total":85.00}
+HTTP 200
+
+$ curl -s http://localhost:8081/api/pagos/auditoria | jq .
+[
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4051",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 301
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4052",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 305
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": false,
+      "autorizacion": null,
+      "mensaje": "Error: LegacyPay no está disponible"
+    },
+    "duracionMs": 305
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": false,
+      "autorizacion": null,
+      "mensaje": "Error: LegacyPay no está disponible"
+    },
+    "duracionMs": 305
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": false,
+      "autorizacion": null,
+      "mensaje": "Error: LegacyPay no está disponible"
+    },
+    "duracionMs": 303
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4054",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 305
+  },
+  {
+    "proveedor": "LEGACYPAY",
+    "monto": 85.00,
+    "resultado": {
+      "aprobado": true,
+      "autorizacion": "LP4055",
+      "mensaje": "Pago aprobado"
+    },
+    "duracionMs": 302
+  }
+]
+Entradas en auditoría: 7
+Entradas con error (timeouts): 3
+
+Salida de MetricasPago en consola (corrida B):
+[MÉTRICAS] LEGACYPAY: aprobados=1/1 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=2/2 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=3/3 (100.0%)
+[MÉTRICAS] LEGACYPAY: aprobados=4/4 (100.0%)
+
+### Conteo
+Corrida A: 5 entradas, 0 pagos con 503.
+Corrida B: 7 entradas, 3 de ellas por timeout, 1 pago con 503 (PED-3: tres timeouts seguidos).
+
+Lectura:
+- A: una entrada por pago. PED-2 y PED-3 tardaron 914 ms y 910 ms (cada intento de LegacyPay
+  tarda ~300 ms), o sea que hubo reintentos, pero quedaron dentro de la única entrada de cada pago.
+- B: una entrada por intento. Entradas 1-2 = PED-1 y PED-2 aprobados, entradas 3-5 = los tres
+  timeouts de PED-3 (respondió 503), entradas 6-7 = PED-4 y PED-5 aprobados. PED-3 nunca se
+  aprobó, así que no tiene entrada de éxito: 4 aprobadas + 3 de error = 7 (no 5 + 3 = 8).
