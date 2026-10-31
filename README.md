@@ -9,8 +9,8 @@ Ingeniería de Software 2 · Taller: patrones de diseño creacionales y estructu
 | Integrante | Patrones | Reto de extensión |
 |---|---|---|
 | Mayer Santiago Torres Sánchez | Abstract Factory y Decorator | Reto A (Perú) y Reto B (Métricas) |
-| Nicolas Barbosa Gualteros | Adapter y Factory Method | Reto C |
-| Thomas Esteban Duarte Cano | Builder y Proxy |
+| Nicolas Barbosa Gualteros | Adapter y Factory Method | Reto C (WhatsApp) |
+| Thomas Esteban Duarte Cano | Builder y Proxy | - |
 
 Cada integrante trabajó en su propia rama y la integró a `main` mediante un pull request.
 
